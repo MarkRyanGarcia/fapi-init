@@ -18,6 +18,9 @@ type ProjectConfig struct {
 	Database          string
 	IncludeSQLAlchemy bool
 	IncludeMongoDB    bool
+	AuthProvider      string
+	UseClerk          bool
+	UseCognito        bool
 	UsePipenv         bool
 	SetupVenv         bool
 }

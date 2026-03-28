@@ -1,1 +1,116 @@
-# Security utilities (e.g. JWT, OAuth2) can be added here
+{{- if .UseClerk }}
+from clerk_backend_api import AuthenticateRequestOptions, Clerk
+from fastapi import Depends, HTTPException, Request, status
+from app.core.config import settings
+
+clerk = Clerk(bearer_auth=settings.CLERK_SECRET_KEY)
+
+
+def get_optional_auth_id(request: Request) -> str | None:
+    """
+    Returns the Clerk user_id (sub) if the request carries a valid session token,
+    or None if unauthenticated. Use this for endpoints that work for both guests
+    and signed-in users.
+
+    Usage:
+        @router.get("/feed")
+        def feed(user_id: str | None = Depends(get_optional_auth_id)):
+            if user_id:
+                return personalized_feed(user_id)
+            return public_feed()
+    """
+    auth_state = clerk.authenticate_request(request, AuthenticateRequestOptions())
+    return auth_state.payload.get("sub") if auth_state.payload else None
+
+
+def require_auth(request: Request) -> str:
+    """
+    Returns the Clerk user_id (sub) for the authenticated user.
+    Raises HTTP 401 if the session token is missing or invalid.
+    Use this for endpoints that must be protected.
+
+    Usage:
+        @router.get("/me")
+        def get_me(user_id: str = Depends(require_auth)):
+            return {"user_id": user_id}
+
+        @router.post("/items")
+        def create_item(item: ItemCreate, user_id: str = Depends(require_auth)):
+            return ItemService.create(item, owner_id=user_id)
+    """
+    auth_state = clerk.authenticate_request(request, AuthenticateRequestOptions())
+    if not auth_state.is_signed_in:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Unauthorized", "reason": str(auth_state.reason)},
+        )
+    if not auth_state.payload or not auth_state.payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Unauthorized", "reason": "Unable to retrieve user_id"},
+        )
+    return auth_state.payload["sub"]
+{{- else if .UseCognito }}
+import httpx
+from functools import lru_cache
+from jose import jwt, JWTError
+from fastapi import HTTPException, Request, status
+from app.core.config import settings
+
+JWKS_URL = (
+    f"https://cognito-idp.{settings.AWS_REGION}.amazonaws.com/"
+    f"{settings.COGNITO_USER_POOL_ID}/.well-known/jwks.json"
+)
+
+
+@lru_cache
+def _get_jwks() -> dict:
+    response = httpx.get(JWKS_URL)
+    response.raise_for_status()
+    return response.json()
+
+
+def _decode_token(token: str) -> dict:
+    jwks = _get_jwks()
+    return jwt.decode(
+        token,
+        jwks,
+        algorithms=["RS256"],
+        audience=settings.COGNITO_APP_CLIENT_ID,
+    )
+
+
+def _extract_bearer(request: Request) -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return None
+
+
+def get_optional_auth_id(request: Request) -> str | None:
+    token = _extract_bearer(request)
+    if not token:
+        return None
+    try:
+        payload = _decode_token(token)
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
+def require_auth(request: Request) -> str:
+    token = _extract_bearer(request)
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+    try:
+        payload = _decode_token(token)
+    except JWTError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to retrieve user_id")
+    return sub
+{{- else }}
+# No auth provider configured.
+# Add your authentication logic here.
+{{- end }}

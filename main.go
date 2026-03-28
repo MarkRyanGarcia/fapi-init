@@ -57,6 +57,9 @@ func main() {
 			Database:          m.Selected,
 			IncludeSQLAlchemy: isSQL,
 			IncludeMongoDB:    isMongo,
+			AuthProvider:      m.AuthProvider,
+			UseClerk:          m.AuthProvider == "Clerk",
+			UseCognito:        m.AuthProvider == "AWS Cognito",
 			UsePipenv:         m.UsePipenv,
 			SetupVenv:         m.SetupVenv,
 		}

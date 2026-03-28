@@ -1,10 +1,13 @@
-from fastapi import APIRouter{{- if or .IncludeSQLAlchemy .IncludeMongoDB }}, Depends{{- end }}
+from fastapi import APIRouter, Depends
 {{- if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 {{- else if .IncludeMongoDB }}
 from pymongo.database import Database
 from app.db.session import get_db
+{{- end }}
+{{- if .UseClerk }}
+from app.core.security import require_auth, get_optional_auth_id
 {{- end }}
 from app.schemas.item import ItemCreate, ItemRead
 from app.services.item_service import ItemService
@@ -13,26 +16,58 @@ router = APIRouter()
 
 {{- if .IncludeSQLAlchemy }}
 @router.get("", response_model=list[ItemRead])
-def list_items(db: Session = Depends(get_db)):
+def list_items(
+    db: Session = Depends(get_db),
+{{- if .UseClerk }}
+    # Remove get_optional_auth_id and use require_auth to make this endpoint protected
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return ItemService.get_all(db)
 
 @router.post("", response_model=ItemRead)
-def create_item(item: ItemCreate, db: Session = Depends(get_db)):
+def create_item(
+    item: ItemCreate,
+    db: Session = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return ItemService.create(db, item)
 {{- else if .IncludeMongoDB }}
 @router.get("", response_model=list[ItemRead])
-def list_items(db: Database = Depends(get_db)):
+def list_items(
+    db: Database = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return ItemService.get_all(db)
 
 @router.post("", response_model=ItemRead)
-def create_item(item: ItemCreate, db: Database = Depends(get_db)):
+def create_item(
+    item: ItemCreate,
+    db: Database = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return ItemService.create(db, item)
 {{- else }}
 @router.get("", response_model=list[ItemRead])
-async def list_items():
+async def list_items(
+{{- if .UseClerk }}
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return await ItemService.get_all()
 
 @router.post("", response_model=ItemRead)
-async def create_item(item: ItemCreate):
+async def create_item(
+    item: ItemCreate,
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return await ItemService.create(item)
 {{- end }}

@@ -12,20 +12,22 @@ type sessionState int
 const (
 	stateInputName sessionState = iota
 	stateSelectDB
+	stateSelectAuth
 	stateSelectPipenv
 	stateSelectVenv
 )
 
 type Model struct {
-	State       sessionState
-	TextInput   textinput.Model
-	ProjectName string
-	Cursor      int
-	Choices     []string
-	Selected    string
-	UsePipenv   bool
-	SetupVenv   bool
-	Quitting    bool
+	State        sessionState
+	TextInput    textinput.Model
+	ProjectName  string
+	Cursor       int
+	Choices      []string
+	Selected     string
+	AuthProvider string
+	UsePipenv    bool
+	SetupVenv    bool
+	Quitting     bool
 }
 
 func InitialModel() Model {
@@ -78,6 +80,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.State == stateSelectDB {
 				m.Selected = m.Choices[m.Cursor]
+				m.State = stateSelectAuth
+				m.Cursor = 0
+				return m, nil
+			} else if m.State == stateSelectAuth {
+				authChoices := []string{"None", "Clerk", "AWS Cognito"}
+				m.AuthProvider = authChoices[m.Cursor]
 				m.State = stateSelectPipenv
 				m.Cursor = 0
 				return m, nil
@@ -97,6 +105,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "down", "j":
 			if m.State == stateSelectDB && m.Cursor < len(m.Choices)-1 {
+				m.Cursor++
+			} else if m.State == stateSelectAuth && m.Cursor < 2 {
 				m.Cursor++
 			} else if (m.State == stateSelectPipenv || m.State == stateSelectVenv) && m.Cursor < 1 {
 				m.Cursor++
@@ -140,9 +150,23 @@ func (m Model) View() string {
 		return s + "\n(j/k to move, enter to select)\n"
 	}
 
+	if m.State == stateSelectAuth {
+		s := headerStyle.Render("Step 3: Auth Provider") + "\n\n"
+		s += fmt.Sprintf("Project: %s | DB: %s\n\nChoose an auth provider:\n", m.ProjectName, m.Selected)
+		authChoices := []string{"None", "Clerk", "AWS Cognito"}
+		for i, choice := range authChoices {
+			cursor := " "
+			if m.Cursor == i {
+				cursor = ">"
+			}
+			s += fmt.Sprintf("%s %s\n", cursor, choice)
+		}
+		return s + "\n(j/k to move, enter to select)\n"
+	}
+
 	// Pipenv selection
 	if m.State == stateSelectPipenv {
-		s := headerStyle.Render("Step 3: Package Manager") + "\n\n"
+		s := headerStyle.Render("Step 4: Package Manager") + "\n\n"
 		s += fmt.Sprintf("Project: %s | DB: %s\n\nUse pipenv?\n", m.ProjectName, m.Selected)
 		pipenvChoices := []string{"Yes (pipenv)", "No (requirements.txt)"}
 		for i, choice := range pipenvChoices {
@@ -160,7 +184,7 @@ func (m Model) View() string {
 	if m.UsePipenv {
 		pkgManager = "pipenv"
 	}
-	s := headerStyle.Render("Step 4: Virtual Environment") + "\n\n"
+	s := headerStyle.Render("Step 5: Virtual Environment") + "\n\n"
 	s += fmt.Sprintf("Project: %s | DB: %s | PM: %s\n\nInstall pip packages now?\n", m.ProjectName, m.Selected, pkgManager)
 	venvChoices := []string{"Yes", "No"}
 	for i, choice := range venvChoices {

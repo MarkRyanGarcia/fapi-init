@@ -11,5 +11,11 @@ psycopg2-binary
 pymongo[srv]
 certifi
 {{- end }}
+{{- if .UseClerk }}
+clerk-backend-api
+{{- else if .UseCognito }}
+python-jose[cryptography]
+httpx
+{{- end }}
 httpx
 pytest

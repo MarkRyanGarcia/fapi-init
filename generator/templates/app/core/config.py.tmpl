@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
     MONGODB_DB: str = "{{ .ProjectName }}"
 {{- end }}
+{{- if .UseClerk }}
+    CLERK_SECRET_KEY: str = ""
+{{- else if .UseCognito }}
+    AWS_REGION: str = "us-east-1"
+    COGNITO_USER_POOL_ID: str = ""
+    COGNITO_APP_CLIENT_ID: str = ""
+{{- end }}
 
     class Config:
         env_file = ".env"

@@ -1,10 +1,13 @@
-from fastapi import APIRouter{{- if or .IncludeSQLAlchemy .IncludeMongoDB }}, Depends{{- end }}
+from fastapi import APIRouter, Depends
 {{- if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 {{- else if .IncludeMongoDB }}
 from pymongo.database import Database
 from app.db.session import get_db
+{{- end }}
+{{- if .UseClerk }}
+from app.core.security import require_auth, get_optional_auth_id
 {{- end }}
 from app.schemas.user import UserCreate, UserRead
 from app.services.user_service import UserService
@@ -13,26 +16,58 @@ router = APIRouter()
 
 {{- if .IncludeSQLAlchemy }}
 @router.get("", response_model=list[UserRead])
-def list_users(db: Session = Depends(get_db)):
+def list_users(
+    db: Session = Depends(get_db),
+{{- if .UseClerk }}
+    # Remove get_optional_auth_id and use require_auth to make this endpoint protected
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return UserService.get_all(db)
 
 @router.post("", response_model=UserRead)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return UserService.create(db, user)
 {{- else if .IncludeMongoDB }}
 @router.get("", response_model=list[UserRead])
-def list_users(db: Database = Depends(get_db)):
+def list_users(
+    db: Database = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return UserService.get_all(db)
 
 @router.post("", response_model=UserRead)
-def create_user(user: UserCreate, db: Database = Depends(get_db)):
+def create_user(
+    user: UserCreate,
+    db: Database = Depends(get_db),
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return UserService.create(db, user)
 {{- else }}
 @router.get("", response_model=list[UserRead])
-async def list_users():
+async def list_users(
+{{- if .UseClerk }}
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
     return await UserService.get_all()
 
 @router.post("", response_model=UserRead)
-async def create_user(user: UserCreate):
+async def create_user(
+    user: UserCreate,
+{{- if .UseClerk }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
     return await UserService.create(user)
 {{- end }}

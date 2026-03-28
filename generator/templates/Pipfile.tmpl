@@ -17,6 +17,12 @@ psycopg2-binary = "*"
 pymongo = {extras = ["srv"], version = "*"}
 certifi = "*"
 {{- end }}
+{{- if .UseClerk }}
+clerk-backend-api = "*"
+{{- else if .UseCognito }}
+python-jose = {extras = ["cryptography"], version = "*"}
+httpx = "*"
+{{- end }}
 
 [dev-packages]
 httpx = "*"
