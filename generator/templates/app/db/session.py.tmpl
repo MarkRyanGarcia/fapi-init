@@ -12,6 +12,14 @@ def get_db():
         yield db
     finally:
         db.close()
-{{- else }}
-# Configure your database session here
+{{- else if .IncludeMongoDB }}
+from pymongo import MongoClient
+from app.core.config import settings
+import certifi
+
+client = MongoClient(settings.MONGODB_URL, tlsCAFile=certifi.where())
+db = client[settings.MONGODB_DB]
+
+def get_db():
+    return db
 {{- end }}

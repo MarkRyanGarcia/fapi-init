@@ -1,3 +1,4 @@
+{{- if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.models.item import Item
 from app.schemas.item import ItemCreate
@@ -14,3 +15,32 @@ class ItemService:
         db.commit()
         db.refresh(db_item)
         return db_item
+{{- else if .IncludeMongoDB }}
+from pymongo.database import Database
+from app.models.item import Item
+from app.schemas.item import ItemCreate
+
+class ItemService:
+    @staticmethod
+    def get_all(db: Database) -> list[Item]:
+        docs = db["items"].find()
+        return [Item(id=str(d["_id"]), title=d["title"], owner_id=d["owner_id"]) for d in docs]
+
+    @staticmethod
+    def create(db: Database, item: ItemCreate) -> Item:
+        doc = item.model_dump()
+        result = db["items"].insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        return Item(**{k: v for k, v in doc.items() if k != "_id"})
+{{- else }}
+from app.schemas.item import ItemCreate, ItemRead
+
+class ItemService:
+    @staticmethod
+    async def get_all() -> list[ItemRead]:
+        return []
+
+    @staticmethod
+    async def create(item: ItemCreate) -> ItemRead:
+        raise NotImplementedError
+{{- end }}

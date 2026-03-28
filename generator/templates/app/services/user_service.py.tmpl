@@ -1,3 +1,4 @@
+{{- if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -14,3 +15,36 @@ class UserService:
         db.commit()
         db.refresh(db_user)
         return db_user
+{{- else if .IncludeMongoDB }}
+from pymongo.database import Database
+from app.models.user import User
+from app.schemas.user import UserCreate
+from app.db.session import get_db
+from datetime import datetime, timezone
+from bson import ObjectId
+
+class UserService:
+    @staticmethod
+    def get_all(db: Database) -> list[User]:
+        docs = db["users"].find()
+        return [User(id=str(d["_id"]), username=d["username"], email=d.get("email"), created_at=d.get("created_at")) for d in docs]
+
+    @staticmethod
+    def create(db: Database, user: UserCreate) -> User:
+        doc = user.model_dump()
+        doc["created_at"] = datetime.now(timezone.utc)
+        result = db["users"].insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        return User(**{k: v for k, v in doc.items() if k != "_id"})
+{{- else }}
+from app.schemas.user import UserCreate, UserRead
+
+class UserService:
+    @staticmethod
+    async def get_all() -> list[UserRead]:
+        return []
+
+    @staticmethod
+    async def create(user: UserCreate) -> UserRead:
+        raise NotImplementedError
+{{- end }}

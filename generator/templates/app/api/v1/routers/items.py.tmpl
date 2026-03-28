@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter{{- if or .IncludeSQLAlchemy .IncludeMongoDB }}, Depends{{- end }}
+{{- if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
+from app.db.session import get_db
+{{- else if .IncludeMongoDB }}
+from pymongo.database import Database
+from app.db.session import get_db
+{{- end }}
 from app.schemas.item import ItemCreate, ItemRead
 from app.services.item_service import ItemService
-from app.db.session import get_db
 
 router = APIRouter()
 
+{{- if .IncludeSQLAlchemy }}
 @router.get("", response_model=list[ItemRead])
 def list_items(db: Session = Depends(get_db)):
     return ItemService.get_all(db)
@@ -13,3 +19,20 @@ def list_items(db: Session = Depends(get_db)):
 @router.post("", response_model=ItemRead)
 def create_item(item: ItemCreate, db: Session = Depends(get_db)):
     return ItemService.create(db, item)
+{{- else if .IncludeMongoDB }}
+@router.get("", response_model=list[ItemRead])
+def list_items(db: Database = Depends(get_db)):
+    return ItemService.get_all(db)
+
+@router.post("", response_model=ItemRead)
+def create_item(item: ItemCreate, db: Database = Depends(get_db)):
+    return ItemService.create(db, item)
+{{- else }}
+@router.get("", response_model=list[ItemRead])
+async def list_items():
+    return await ItemService.get_all()
+
+@router.post("", response_model=ItemRead)
+async def create_item(item: ItemCreate):
+    return await ItemService.create(item)
+{{- end }}

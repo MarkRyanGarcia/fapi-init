@@ -57,16 +57,32 @@ func rawFileMap() map[string]string {
 	}
 }
 
+var alembicFiles = map[string]bool{
+	"alembic.ini":              true,
+	"migrations/env.py":        true,
+	"migrations/versions/.gitkeep": true,
+}
+
+var alembicRawFiles = map[string]bool{
+	"migrations/script.py.mako": true,
+}
+
 func CreateProject(cfg ProjectConfig) error {
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = cfg.ProjectName
 	}
 	for dest, tmplPath := range fileMap() {
+		if cfg.IncludeMongoDB && alembicFiles[dest] {
+			continue
+		}
 		if err := writeTemplate(cfg, dest, tmplPath); err != nil {
 			return err
 		}
 	}
 	for dest, src := range rawFileMap() {
+		if cfg.IncludeMongoDB && alembicRawFiles[dest] {
+			continue
+		}
 		if err := copyRaw(cfg.OutputDir, dest, src); err != nil {
 			return err
 		}

@@ -8,8 +8,8 @@ alembic
 psycopg2-binary
 {{- end }}
 {{- if .IncludeMongoDB }}
-beanie
-motor
+pymongo[srv]
+certifi
 {{- end }}
 httpx
 pytest

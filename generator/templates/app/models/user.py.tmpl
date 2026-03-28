@@ -1,3 +1,4 @@
+{{- if .IncludeSQLAlchemy }}
 from typing import Optional
 from datetime import datetime
 from sqlalchemy import String, DateTime, func
@@ -11,3 +12,20 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+{{- else if .IncludeMongoDB }}
+from typing import Optional
+from datetime import datetime
+from dataclasses import dataclass, field
+
+@dataclass
+class User:
+    username: str
+    email: Optional[str] = None
+    created_at: Optional[datetime] = None
+    id: Optional[str] = None
+{{- else }}
+class User:
+    id: str
+    username: str
+    email: str
+{{- end }}

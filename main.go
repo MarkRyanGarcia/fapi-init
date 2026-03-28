@@ -40,7 +40,7 @@ func main() {
 	m := finalModel.(tui.Model)
 
 	if m.Selected != "" && !m.Quitting {
-		isSQL := strings.Contains(m.Selected, "SQL") || strings.Contains(m.Selected, "SQLite")
+		isSQL := strings.Contains(m.Selected, "SQL")
 		isMongo := strings.Contains(m.Selected, "MongoDB")
 
 		// Determine output directory

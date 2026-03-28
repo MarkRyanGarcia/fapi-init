@@ -5,8 +5,12 @@ load_dotenv()
 
 class Settings(BaseSettings):
     APP_NAME: str = "{{ .ProjectName }}"
+{{- if .IncludeSQLAlchemy }}
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/{{ .ProjectName }}"
-    SECRET_KEY: str = "change-me"
+{{- else if .IncludeMongoDB }}
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB: str = "{{ .ProjectName }}"
+{{- end }}
 
     class Config:
         env_file = ".env"

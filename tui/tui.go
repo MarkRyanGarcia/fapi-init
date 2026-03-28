@@ -45,7 +45,7 @@ func InitialModelWithName(name string) Model {
 		State:       state,
 		TextInput:   ti,
 		ProjectName: name,
-		Choices:     []string{"PostgreSQL (SQLAlchemy)", "MongoDB (Beanie)", "SQLite (Development)"},
+		Choices:     []string{"PostgreSQL (SQLAlchemy)", "MongoDB (PyMongo)"},
 	}
 }
 

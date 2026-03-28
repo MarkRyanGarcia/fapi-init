@@ -1,3 +1,4 @@
+{{- if .IncludeSQLAlchemy }}
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
@@ -8,3 +9,18 @@ class Item(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     owner_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+{{- else if .IncludeMongoDB }}
+from typing import Optional
+from dataclasses import dataclass
+
+@dataclass
+class Item:
+    title: str
+    owner_id: str
+    id: Optional[str] = None
+{{- else }}
+class Item:
+    id: int
+    title: str
+    owner_id: str
+{{- end }}
