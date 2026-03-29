@@ -2,6 +2,8 @@
 
 A CLI tool that scaffolds a production-ready FastAPI project with an interactive TUI. Choose your database backend (PostgreSQL via SQLAlchemy or MongoDB via PyMongo) and package manager (pipenv or requirements.txt) and get a fully structured project in seconds.
 
+![fastapi-gen-demo](https://github.com/user-attachments/assets/daf1ad03-7a99-4c78-8bd7-9cce442bbfe3)
+
 ## Prerequisites
 
 - [Go](https://go.dev/dl/) 1.21+
