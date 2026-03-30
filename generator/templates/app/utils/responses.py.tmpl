@@ -1,0 +1,20 @@
+from typing import Any, Generic, TypeVar
+from pydantic import BaseModel
+
+T = TypeVar("T")
+
+
+class DataResponse(BaseModel, Generic[T]):
+    data: T
+    message: str = "ok"
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: list[T]
+    total: int
+    limit: int
+    offset: int
+
+
+def paginated(items: list[Any], total: int, limit: int, offset: int) -> dict:
+    return {"data": items, "total": total, "limit": limit, "offset": offset}
