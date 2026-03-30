@@ -1,6 +1,6 @@
 # fastapi-gen
 
-A CLI tool that scaffolds a production-ready FastAPI project with an interactive TUI. Choose your database backend (PostgreSQL via SQLAlchemy or MongoDB via PyMongo) and package manager (pipenv or requirements.txt) and get a fully structured project in seconds.
+A CLI tool that scaffolds a production-ready FastAPI project with an interactive TUI. Choose your database, ORM, auth provider, package manager, and optional Docker/Redis support — and get a fully structured project in seconds.
 
 ![fastapi-gen-demo](https://github.com/user-attachments/assets/daf1ad03-7a99-4c78-8bd7-9cce442bbfe3)
 
@@ -9,10 +9,9 @@ A CLI tool that scaffolds a production-ready FastAPI project with an interactive
 - [Go](https://go.dev/dl/) 1.21+
 - Python 3.11+
 - `pipenv` (optional, only if you choose it during setup)
+- Docker (optional, only if you choose Docker support)
 
 ## Installation
-
-### Install with `go install`
 
 ```bash
 go install github.com/markryangarcia/fastapi-gen@latest
@@ -22,36 +21,27 @@ Make sure `$GOPATH/bin` (or `$HOME/go/bin`) is in your `PATH`.
 
 ## Usage
 
-### Create a new project in a new directory
-
 ```bash
+# Create a new project in a new directory
 fastapi-gen
-```
 
-The TUI will walk you through three steps:
-
-1. Project name
-2. Database — `PostgreSQL (SQLAlchemy)` or `MongoDB (PyMongo)`
-3. Package manager — `pipenv` or `requirements.txt`
-4. Virtual environment — set it up automatically or skip
-
-A new folder named after your project will be created in the current directory.
-
-### Scaffold into the current directory
-
-```bash
+# Scaffold into the current directory
 fastapi-gen .
-```
 
-Skips the name prompt and uses the current directory name as the project name. Files are written in-place.
-
-### Pass a project name directly
-
-```bash
+# Pass a project name directly (skips the name prompt)
 fastapi-gen my-api
 ```
 
-Skips the name prompt and goes straight to database selection.
+The TUI walks you through:
+
+1. Project name
+2. Database — `PostgreSQL (SQLAlchemy)` or `MongoDB (PyMongo)`
+3. ORM — `SQLAlchemy`, `SQLModel`, or `FastCRUD` (PostgreSQL only)
+4. Auth provider — `None`, `Clerk`, or `AWS Cognito`
+5. Package manager — `Pipenv` or `requirements.txt`
+6. Docker support — generates `Dockerfile`, `docker-compose.yml`, and `.dockerignore`
+7. Redis caching — generates `app/core/cache.py` with Redis integration
+8. Install & start — run setup automatically or skip
 
 ## Generated Project Structure
 
@@ -64,9 +54,10 @@ my-api/
 │   │       └── items.py
 │   ├── core/
 │   │   ├── config.py
-│   │   └── security.py
+│   │   ├── security.py
+│   │   └── cache.py          # Redis only
 │   ├── db/
-│   │   ├── base.py
+│   │   ├── base.py           # SQLAlchemy only
 │   │   └── session.py
 │   ├── models/
 │   │   ├── user.py
@@ -77,8 +68,12 @@ my-api/
 │   ├── services/
 │   │   ├── user_service.py
 │   │   └── item_service.py
+│   ├── utils/
+│   │   ├── pagination.py
+│   │   ├── responses.py
+│   │   └── exceptions.py
 │   └── main.py
-├── migrations/          # PostgreSQL only (Alembic)
+├── migrations/               # PostgreSQL only (Alembic)
 │   └── versions/
 ├── tests/
 │   ├── test_users.py
@@ -86,10 +81,31 @@ my-api/
 ├── conftest.py
 ├── .env
 ├── .gitignore
-├── alembic.ini          # PostgreSQL only
-├── requirements.txt     # if not using pipenv
-└── Pipfile              # if using pipenv
+├── alembic.ini               # PostgreSQL only
+├── Dockerfile                # Docker only
+├── docker-compose.yml        # Docker only
+├── .dockerignore             # Docker only
+├── requirements.txt          # if not using pipenv
+└── Pipfile                   # if using pipenv
 ```
+
+## ORM Options (PostgreSQL only)
+
+| Option | Description |
+|---|---|
+| `SQLAlchemy` | Classic SQLAlchemy Core + ORM with Alembic migrations |
+| `SQLModel` | SQLModel (SQLAlchemy + Pydantic) — models double as schemas |
+| `FastCRUD` | FastCRUD on top of SQLModel for auto-generated CRUD endpoints |
+
+MongoDB always uses PyMongo directly — no ORM prompt.
+
+## Auth Providers
+
+| Option | Description |
+|---|---|
+| `None` | Custom JWT auth via `app/core/security.py` |
+| `Clerk` | Clerk JWT verification wired into the security module |
+| `AWS Cognito` | AWS Cognito JWT verification wired into the security module |
 
 ## Setting Up the Generated Project
 
@@ -110,43 +126,40 @@ MONGODB_URL="mongodb://localhost:27017"
 MONGODB_DB="my-api"
 ```
 
-### 2. Install dependencies
-
-**With pipenv + auto venv setup** (runs `pipenv install --dev` automatically):
-```bash
-cd my-api && pipenv shell
+**Redis (if enabled):**
+```env
+REDIS_URL="redis://localhost:6379"
 ```
 
-**With pipenv, manual setup:**
+### 2. Install dependencies
+
+**With Docker:**
+```bash
+cd my-api
+docker compose up --build
+```
+
+**With pipenv:**
 ```bash
 cd my-api
 pipenv install --dev
 pipenv shell
-```
-
-**With requirements.txt + auto venv setup** (`.venv` is created automatically):
-```bash
-source my-api/.venv/bin/activate  # Windows: my-api\.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-**With requirements.txt, manual setup:**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Start the development server
-
-```bash
 fastapi dev app
 ```
 
-The API will be available at `http://localhost:8000`.  
+**With requirements.txt:**
+```bash
+cd my-api
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+fastapi dev app
+```
+
+The API will be available at `http://localhost:8000`.
 Interactive docs at `http://localhost:8000/docs`.
 
-### 5. Run tests
+### 3. Run tests
 
 ```bash
 pytest
@@ -154,7 +167,9 @@ pytest
 
 ## Notes
 
-- If you opt into automatic venv setup with pipenv, `pipenv install --dev` runs right after scaffolding.
-- If you opt into automatic venv setup with requirements.txt, a `.venv` folder is created via `python3 -m venv .venv` — you still need to activate it and run `pip install`.
-- The MongoDB option skips Alembic entirely — no `alembic.ini` or `migrations/` folder is generated.
 - `q` or `Ctrl+C` at any point in the TUI cancels generation without writing any files.
+- MongoDB skips Alembic entirely — no `alembic.ini` or `migrations/` folder is generated.
+- `SQLModel` and `FastCRUD` skip `app/db/base.py` since SQLModel handles that internally.
+- Redis adds `app/core/cache.py` with a ready-to-use cache client.
+- If Docker is selected but the daemon isn't running, the tool warns you and exits cleanly.
+- If you opt into "Install & start" with Docker, `docker compose up --build` runs automatically after scaffolding.
