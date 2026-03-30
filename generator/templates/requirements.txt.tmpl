@@ -2,7 +2,16 @@ fastapi[standard]
 pydantic[email]
 pydantic-settings
 python-dotenv
-{{- if .IncludeSQLAlchemy }}
+{{- if .UseFastCRUD }}
+sqlmodel
+alembic
+psycopg2-binary
+fastcrud
+{{- else if .UseSQLModel }}
+sqlmodel
+alembic
+psycopg2-binary
+{{- else if .IncludeSQLAlchemy }}
 sqlalchemy
 alembic
 psycopg2-binary

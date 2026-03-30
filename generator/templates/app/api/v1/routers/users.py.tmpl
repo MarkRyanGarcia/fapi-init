@@ -1,25 +1,59 @@
 from fastapi import APIRouter, Depends
-{{- if .IncludeSQLAlchemy }}
+{{- if .UseFastCRUD }}
+from sqlmodel import Session
+from app.db.session import get_db
+from app.schemas.user import UserCreate, UserCreateInternal, UserRead
+from app.services.user_service import crud_users
+{{- else if .UseSQLModel }}
+from sqlmodel import Session
+from app.db.session import get_db
+from app.schemas.user import UserCreate, UserRead
+from app.services.user_service import UserService
+{{- else if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.db.session import get_db
+from app.schemas.user import UserCreate, UserRead
+from app.services.user_service import UserService
 {{- else if .IncludeMongoDB }}
 from pymongo.database import Database
 from app.db.session import get_db
+from app.schemas.user import UserCreate, UserRead
+from app.services.user_service import UserService
+{{- else }}
+from app.schemas.user import UserCreate, UserRead
+from app.services.user_service import UserService
 {{- end }}
 {{- if or .UseClerk .UseCognito }}
 from app.core.security import require_auth, get_optional_auth_id
 {{- end }}
-from app.schemas.user import UserCreate, UserRead
-from app.services.user_service import UserService
 
 router = APIRouter()
 
-{{- if .IncludeSQLAlchemy }}
+{{- if .UseFastCRUD }}
+@router.get("", response_model=list[UserRead])
+async def list_users(
+    db: Session = Depends(get_db),
+{{- if or .UseClerk .UseCognito }}
+    user_id: str | None = Depends(get_optional_auth_id),
+{{- end }}
+):
+    result = await crud_users.get_multi(db)
+    return result["data"]
+
+@router.post("", response_model=UserRead)
+async def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+{{- if or .UseClerk .UseCognito }}
+    user_id: str = Depends(require_auth),
+{{- end }}
+):
+    return await crud_users.create(db, UserCreateInternal(**user.model_dump()))
+{{- else if or .UseSQLModel .IncludeSQLAlchemy }}
 @router.get("", response_model=list[UserRead])
 def list_users(
     db: Session = Depends(get_db),
 {{- if or .UseClerk .UseCognito }}
-    # Remove get_optional_auth_id and use require_auth to make this endpoint protected
     user_id: str | None = Depends(get_optional_auth_id),
 {{- end }}
 ):

@@ -30,6 +30,7 @@ type sessionState int
 const (
 	stateInputName sessionState = iota
 	stateSelectDB
+	stateSelectORM
 	stateSelectAuth
 	stateSelectPipenv
 	stateSelectDocker
@@ -46,6 +47,7 @@ type Model struct {
 	Cursor       int
 	Choices      []string
 	Selected     string
+	ORMChoice    string
 	AuthProvider string
 	UsePipenv    bool
 	SetupVenv    bool
@@ -107,6 +109,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Cursor = 0
 			case stateSelectDB:
 				m.Selected = m.Choices[m.Cursor]
+				if strings.Contains(m.Selected, "SQL") {
+					m.State = stateSelectORM
+				} else {
+					m.State = stateSelectAuth
+				}
+				m.Cursor = 0
+			case stateSelectORM:
+				ormChoices := []string{"SQLAlchemy", "SQLModel", "FastCRUD"}
+				m.ORMChoice = ormChoices[m.Cursor]
 				m.State = stateSelectAuth
 				m.Cursor = 0
 			case stateSelectAuth:
@@ -140,6 +151,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Cursor++
 				}
 			case stateSelectAuth:
+				if m.Cursor < 2 {
+					m.Cursor++
+				}
+			case stateSelectORM:
 				if m.Cursor < 2 {
 					m.Cursor++
 				}
@@ -213,6 +228,15 @@ func (m Model) View() string {
 			hint,
 		)
 
+	case stateSelectORM:
+		return fmt.Sprintf(
+			"%s\n%s\n\n%s\n%s",
+			pipe(),
+			pipe()+"  "+cyan.Render("Select an ORM:"),
+			renderOptions([]string{"SQLAlchemy", "SQLModel", "FastCRUD"}, m.Cursor),
+			hint,
+		)
+
 	case stateSelectAuth:
 		return fmt.Sprintf(
 			"%s\n%s\n\n%s\n%s",
@@ -281,6 +305,9 @@ func (m Model) Summary() string {
 	sb.WriteString(pipe() + "\n")
 	sb.WriteString(summaryRow("Project:       ", m.ProjectName))
 	sb.WriteString(summaryRow("Database:      ", m.Selected))
+	if m.ORMChoice != "" {
+		sb.WriteString(summaryRow("ORM:           ", m.ORMChoice))
+	}
 	sb.WriteString(summaryRow("Auth:          ", m.AuthProvider))
 	sb.WriteString(summaryRow("Pkg manager:   ", pkgManager))
 	sb.WriteString(summaryRow("Install & start: ", installNow))

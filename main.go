@@ -59,6 +59,9 @@ func main() {
 
 	isSQL := strings.Contains(m.Selected, "SQL")
 	isMongo := strings.Contains(m.Selected, "MongoDB")
+	isSQLModel := m.ORMChoice == "SQLModel"
+	isFastCRUD := m.ORMChoice == "FastCRUD"
+	isPlainSQL := isSQL && !isSQLModel && !isFastCRUD
 
 	outDir := m.ProjectName
 	if len(os.Args) > 1 && os.Args[1] == "." {
@@ -69,8 +72,10 @@ func main() {
 		ProjectName:       m.ProjectName,
 		OutputDir:         outDir,
 		Database:          m.Selected,
-		IncludeSQLAlchemy: isSQL,
+		IncludeSQLAlchemy: isPlainSQL,
 		IncludeMongoDB:    isMongo,
+		UseSQLModel:       isSQLModel,
+		UseFastCRUD:       isFastCRUD,
 		AuthProvider:      m.AuthProvider,
 		UseClerk:          m.AuthProvider == "Clerk",
 		UseCognito:        m.AuthProvider == "AWS Cognito",

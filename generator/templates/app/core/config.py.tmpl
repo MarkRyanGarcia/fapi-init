@@ -5,7 +5,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     APP_NAME: str = "{{ .ProjectName }}"
-{{- if .IncludeSQLAlchemy }}
+{{- if or .IncludeSQLAlchemy .UseSQLModel .UseFastCRUD }}
 {{- if .UseDocker }}
     DATABASE_URL: str = "postgresql://user:password@db:5432/{{ .ProjectName }}"
 {{- else }}

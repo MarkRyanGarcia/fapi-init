@@ -18,6 +18,8 @@ type ProjectConfig struct {
 	Database          string
 	IncludeSQLAlchemy bool
 	IncludeMongoDB    bool
+	UseSQLModel       bool
+	UseFastCRUD       bool
 	AuthProvider      string
 	UseClerk          bool
 	UseCognito        bool
@@ -80,7 +82,7 @@ func CreateProject(cfg ProjectConfig) error {
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = cfg.ProjectName
 	}
-	if cfg.IncludeSQLAlchemy {
+	if cfg.IncludeSQLAlchemy || cfg.UseSQLModel || cfg.UseFastCRUD {
 		versionsDir := filepath.Join(cfg.OutputDir, "migrations", "versions")
 		if err := os.MkdirAll(versionsDir, 0755); err != nil {
 			return err
@@ -99,6 +101,10 @@ func CreateProject(cfg ProjectConfig) error {
 		}
 		// Skip Docker files if not requested
 		if !cfg.UseDocker && (dest == "Dockerfile" || dest == "docker-compose.yml" || dest == ".dockerignore") {
+			continue
+		}
+		// Skip SQLAlchemy-only base for SQLModel/FastCRUD
+		if (cfg.UseSQLModel || cfg.UseFastCRUD) && dest == "app/db/base.py" {
 			continue
 		}
 		if err := writeTemplate(cfg, dest, tmplPath); err != nil {

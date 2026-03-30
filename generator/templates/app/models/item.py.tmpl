@@ -1,4 +1,14 @@
-{{- if .IncludeSQLAlchemy }}
+{{- if or .UseSQLModel .UseFastCRUD }}
+from typing import Optional
+from sqlmodel import SQLModel, Field
+
+class Item(SQLModel, table=True):
+    __tablename__ = "items"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(nullable=False)
+    owner_id: int = Field(foreign_key="users.id")
+{{- else if .IncludeSQLAlchemy }}
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base

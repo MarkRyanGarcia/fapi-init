@@ -1,4 +1,41 @@
-{{- if .IncludeSQLAlchemy }}
+{{- if .UseFastCRUD }}
+from fastcrud import FastCRUD
+from app.models.user import User
+from app.schemas.user import (
+    UserCreateInternal,
+    UserUpdate,
+    UserUpdateInternal,
+    UserDelete,
+    UserRead,
+)
+
+CRUDUser = FastCRUD[
+    User,
+    UserCreateInternal,
+    UserUpdate,
+    UserUpdateInternal,
+    UserDelete,
+    UserRead,
+]
+crud_users = CRUDUser(User)
+{{- else if .UseSQLModel }}
+from sqlmodel import Session, select
+from app.models.user import User
+from app.schemas.user import UserCreate
+
+class UserService:
+    @staticmethod
+    def get_all(db: Session) -> list[User]:
+        return db.exec(select(User)).all()
+
+    @staticmethod
+    def create(db: Session, user: UserCreate) -> User:
+        db_user = User(**user.model_dump())
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+{{- else if .IncludeSQLAlchemy }}
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -19,9 +56,7 @@ class UserService:
 from pymongo.database import Database
 from app.models.user import User
 from app.schemas.user import UserCreate
-from app.db.session import get_db
 from datetime import datetime, timezone
-from bson import ObjectId
 
 class UserService:
     @staticmethod
