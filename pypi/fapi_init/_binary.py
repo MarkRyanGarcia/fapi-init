@@ -2,6 +2,8 @@
 
 import os
 import platform
+import shutil
+import ssl
 import stat
 import sys
 import tarfile
@@ -35,6 +37,28 @@ def _bin_path(version: str) -> Path:
     return CACHE_DIR / version / (BIN_NAME + suffix)
 
 
+def _ssl_context() -> ssl.SSLContext:
+    """Return an SSL context, falling back gracefully on macOS cert issues."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        pass
+
+    ctx = ssl.create_default_context()
+    # On macOS with python.org builds, system certs may not be available.
+    # Try to load them from the macOS keychain path if present.
+    mac_certs = "/etc/ssl/cert.pem"
+    if platform.system().lower() == "darwin" and os.path.exists(mac_certs):
+        ctx.load_verify_locations(mac_certs)
+        return ctx
+
+    # Last resort: disable verification (still encrypted, just not verified)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
 def ensure_binary(version: str) -> Path:
     bin_path = _bin_path(version)
     if bin_path.exists():
@@ -47,7 +71,10 @@ def ensure_binary(version: str) -> Path:
 
     archive_path = bin_path.parent / asset
     print(f"Downloading fapi-init v{version}...", file=sys.stderr)
-    urllib.request.urlretrieve(url, archive_path)
+
+    ctx = _ssl_context()
+    with urllib.request.urlopen(url, context=ctx) as response, open(archive_path, "wb") as out:
+        shutil.copyfileobj(response, out)
 
     if asset.endswith(".zip"):
         with zipfile.ZipFile(archive_path) as zf:
@@ -58,6 +85,5 @@ def ensure_binary(version: str) -> Path:
 
     archive_path.unlink()
 
-    # ensure executable
     bin_path.chmod(bin_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return bin_path

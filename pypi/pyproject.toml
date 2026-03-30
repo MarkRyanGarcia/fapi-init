@@ -9,6 +9,7 @@ description = "Scaffold a production-ready FastAPI project in seconds"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.8"
+dependencies = ["certifi"]
 keywords = ["fastapi", "scaffold", "generator", "cli", "boilerplate"]
 classifiers = [
   "Development Status :: 4 - Beta",
