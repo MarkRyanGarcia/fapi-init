@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/markryangarcia/fastapi-gen/generator"
-	"github.com/markryangarcia/fastapi-gen/tui"
+	"github.com/markryangarcia/fastapi-init/generator"
+	"github.com/markryangarcia/fastapi-init/tui"
 )
 
 var (
@@ -86,7 +86,7 @@ func main() {
 	}
 
 	if m.UseDocker && !generator.IsDockerRunning() {
-		arg0 := "fastapi-gen"
+		arg0 := "fastapi-init"
 		if len(os.Args) > 0 {
 			arg0 = os.Args[0]
 		}
